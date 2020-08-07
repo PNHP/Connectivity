@@ -54,6 +54,31 @@ statistics = arcpy.Statistics_analysis(intersect,os.path.join("in_memory","stati
 oid_fieldname = arcpy.Describe(parcels_final).OIDFieldName
 arcpy.JoinField_management(parcels_final,oid_fieldname,statistics,"FID_"+os.path.basename(output_parcels),["SUM_acres_ccc","MAX_Connectivity_Value","MAX_NHA_Mean","MAX_GeoPhys_Mean","MAX_LCM_Mean","MAX_RegFlow_Mean","MAX_Resilience_Mean"])
 
+#fill Null values with 0 to prevent issues in calculations later
+with arcpy.da.UpdateCursor(parcels_final,["SUM_acres_ccc","MAX_Connectivity_Value","MAX_NHA_Mean","MAX_GeoPhys_Mean","MAX_LCM_Mean","MAX_RegFlow_Mean","MAX_Resilience_Mean"]) as cursor:
+    for row in cursor:
+        if row[0] is None:
+            row[0] = 0
+            cursor.updateRow(row)
+        if row[1] is None:
+            row[1] = 0
+            cursor.updateRow(row)
+        if row[2] is None:
+            row[2] = 0
+            cursor.updateRow(row)
+        if row[3] is None:
+            row[3] = 0
+            cursor.updateRow(row)
+        if row[4] is None:
+            row[4] = 0
+            cursor.updateRow(row)
+        if row[5] is None:
+            row[5] = 0
+            cursor.updateRow(row)
+        if row[6] is None:
+            row[6] = 0
+            cursor.updateRow(row)
+
 #add 4 fields to store calculations
 f_name = ["CCC_pct","CCC_area_score","CCC_priority_score","priority_score_norm","conn_priority"]
 f_type = ["DOUBLE","SHORT","DOUBLE","DOUBLE","TEXT"]
@@ -62,13 +87,6 @@ f_length = ["","","","",20]
 
 for n,t,a,l in zip(f_name,f_type,f_alias,f_length):
     arcpy.AddField_management(parcels_final,n,t,"","",l,a)
-
-#fill SUM_acres with 0 if value is Null
-with arcpy.da.UpdateCursor(parcels_final,"SUM_acres_ccc") as cursor:
-    for row in cursor:
-        if row[0] is None:
-            row[0] = 0
-            cursor.updateRow(row)
 
 #calculate proportion of parcel area covered by CCC and update field
 with arcpy.da.UpdateCursor(parcels_final,["SUM_acres_ccc","acres_parcel","CCC_pct"]) as cursor:
