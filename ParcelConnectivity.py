@@ -52,6 +52,7 @@ statistics = arcpy.Statistics_analysis(intersect,os.path.join("in_memory","stati
 
 #join statistics fields to parcel layer
 oid_fieldname = arcpy.Describe(parcels_final).OIDFieldName
+arcpy.JoinField_management(parcels_final,oid_fieldname,intersect,"FID_"+os.path.basename(output_parcels),"Region")
 arcpy.JoinField_management(parcels_final,oid_fieldname,statistics,"FID_"+os.path.basename(output_parcels),["SUM_acres_ccc","MAX_Connectivity_Value","MAX_NHA_Mean","MAX_GeoPhys_Mean","MAX_LCM_Mean","MAX_RegFlow_Mean","MAX_Resilience_Mean"])
 
 #fill Null values with 0 to prevent issues in calculations later
@@ -80,10 +81,10 @@ with arcpy.da.UpdateCursor(parcels_final,["SUM_acres_ccc","MAX_Connectivity_Valu
             cursor.updateRow(row)
 
 #add 4 fields to store calculations
-f_name = ["CCC_pct","CCC_area_score","CCC_priority_score","priority_score_norm","conn_priority"]
-f_type = ["DOUBLE","SHORT","DOUBLE","DOUBLE","TEXT"]
-f_alias = ["CCC Area Proportion","CCC Area Score","Connectivity Priority Score","CCC Priority Score Normal","Connectivity Priority"]
-f_length = ["","","","",20]
+f_name = ["CCC_pct","CCC_area_score","CCC_priority_score","priority_score_norm","conn_priority","reg_priority_score_norm","reg_conn_priority"]
+f_type = ["DOUBLE","SHORT","DOUBLE","DOUBLE","TEXT","DOUBLE","TEXT"]
+f_alias = ["CCC Area Proportion","CCC Area Score","Connectivity Priority Score","CCC Priority Score Normal","Connectivity Priority","Regional CCC Priority Score Normal","Regional Connectivity Priority"]
+f_length = ["","","","",20,"",20]
 
 for n,t,a,l in zip(f_name,f_type,f_alias,f_length):
     arcpy.AddField_management(parcels_final,n,t,"","",l,a)
@@ -144,6 +145,43 @@ with arcpy.da.UpdateCursor(parcels_final,["priority_score_norm","CCC_priority_sc
 
 #calculate priority category for parcels
 with arcpy.da.UpdateCursor(parcels_final,["conn_priority","priority_score_norm"]) as cursor:
+    for row in cursor:
+        if row[1] == 0:
+            row[0] = "Very Low"
+            cursor.updateRow(row)
+        elif row[1] > 0 and row[1] <= 0.3:
+            row[0] = "Low"
+            cursor.updateRow(row)
+        elif row[1] > 0.3 and row[1] <= 0.6:
+            row[0] = "Medium"
+            cursor.updateRow(row)
+        elif row[1] > 0.6 and row[1] <= 0.8:
+            row[0] = "High"
+            cursor.updateRow(row)
+        elif row[1] > 0.8 and row[1] <= 1:
+            row[0] = "Very High"
+            cursor.updateRow(row)
+        else:
+            pass
+
+#calculate normalized REGIONAL priority score
+with arcpy.da.SearchCursor(parcels_final,"Region","Region IS NOT NULL") as cursor:
+    regions = sorted({row[0] for row in cursor})
+
+for region in regions:
+    with arcpy.da.SearchCursor(parcels_final,"CCC_priority_score","Region = '{0}'".format(region)) as cursor:
+        value_list = sorted({row[0] for row in cursor})
+
+    max_value = max(value_list)
+    min_value = min(value_list)
+
+    with arcpy.da.UpdateCursor(parcels_final,["reg_priority_score_norm","CCC_priority_score"],"Region = '{0}'".format(region)) as cursor:
+        for row in cursor:
+            row[0] = round((row[1]-min_value)/(max_value-min_value),3)
+            cursor.updateRow(row)
+
+#calculate priority category for parcels
+with arcpy.da.UpdateCursor(parcels_final,["reg_conn_priority","reg_priority_score_norm"]) as cursor:
     for row in cursor:
         if row[1] == 0:
             row[0] = "Very Low"
