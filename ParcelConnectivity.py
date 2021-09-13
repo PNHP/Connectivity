@@ -12,16 +12,77 @@
 import os, arcpy, time
 start_time = time.time()
 
+arcpy.env.overwriteOutput = True
+arcpy.env.workspace = "in_memory"
+
+class Toolbox(object):
+    def __init__(self):
+        """Define the toolbox (the name of the toolbox is the name of the .pyt file)."""
+        self.label = "ConnectivityTools"
+        self.alias = "Connectivity Tools"
+        self.canRunInBackground = False
+        self.tools = [ParcelPopulator]
+
+######################################################################################################################################################
+##
+######################################################################################################################################################
+
+class ParcelPopulator(object):
+    def __init__(self):
+        self.label = "Populate Parcels with Connectivity Data"
+        self.description = ""
+        self.canRunInBackground = False
+
+    def getParameterInfo(self):
+        ccc = arcpy.Parameter(
+            displayName = "CCC Layer",
+            name = "ccc",
+            datatype = "GPFeatureLayer",
+            parameterType = "Required",
+            direction = "Input")
+
+        parcels = arcpy.Parameter(
+            displayName = "Parcel Layer",
+            name = "parcels",
+            datatype = "GPFeatureLayer",
+            parameterType = "Required",
+            direction = "Input")
+
+        output_parcels = arcpy.Parameter(
+            displayName = "Output Layer",
+            name = "output_parcels",
+            datatype = "GPFeatureLayer",
+            parameterType = "Required",
+            direction = "Output")
+
+        params = [ccc,parcels,output_parcels]
+        return params
+
+    def isLicensed(self):
+        return True
+
+    def updateParameters(self, params):
+        return
+
+    def updateMessages(self, params):
+        return
+
+    def execute(self, params, messages):
+
+        ccc = params[0].valueAsText
+        parcels = params[1].valueAsText
+        output_parcels = params[2].valueAsText
+
 ######################################################################################################################################################
 #SET PATHS BELOW
 ######################################################################################################################################################
-ccc = r'C:\\_connectivity\\connectivity.gdb\\CCC_Final' # path to cores and connectivity layer
+ccc = r'E:\\Projects\\connectivity\\connectivity.gdb\\CCC_Final' # path to cores and connectivity layer
 #parcels = r'C:\\_connectivity\\connectivity.gdb\\LH_parcels' # path to parcel layer to be prioritized
-parcels = r'C:\_connectivity\connectivity.gdb\Parcels_unified'
-output_parcels = r'C:\\_connectivity\\connectivity.gdb\\parcels_final_all' # path and name for output parcel layer that will contain prioritization information
+parcels = r'E:\\Projects\\connectivity\\connectivity.gdb\\Parcels_10ac'
+output_parcels = r'E:\\Projects\\connectivity\\connectivity.gdb\\parcels_final_all' # path and name for output parcel layer that will contain prioritization information
 ######################################################################################################################################################
 
-#set environments to overwirte outputs and workspace to memory
+#set environments to overwrite outputs and workspace to memory
 arcpy.env.overwriteOutput = True
 arcpy.env.workspace = "in_memory"
 
@@ -178,6 +239,12 @@ for region in regions:
     with arcpy.da.UpdateCursor(parcels_final,["reg_priority_score_norm","CCC_priority_score"],"Region = '{0}'".format(region)) as cursor:
         for row in cursor:
             row[0] = round((row[1]-min_value)/(max_value-min_value),3)
+            cursor.updateRow(row)
+
+with arcpy.da.UpdateCursor(parcels_final,"reg_priority_score_norm") as cursor:
+    for row in cursor:
+        if row[0] is None:
+            row[0] = 0
             cursor.updateRow(row)
 
 #calculate priority category for parcels
