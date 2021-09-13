@@ -15,64 +15,6 @@ start_time = time.time()
 arcpy.env.overwriteOutput = True
 arcpy.env.workspace = "in_memory"
 
-class Toolbox(object):
-    def __init__(self):
-        """Define the toolbox (the name of the toolbox is the name of the .pyt file)."""
-        self.label = "ConnectivityTools"
-        self.alias = "Connectivity Tools"
-        self.canRunInBackground = False
-        self.tools = [ParcelPopulator]
-
-######################################################################################################################################################
-##
-######################################################################################################################################################
-
-class ParcelPopulator(object):
-    def __init__(self):
-        self.label = "Populate Parcels with Connectivity Data"
-        self.description = ""
-        self.canRunInBackground = False
-
-    def getParameterInfo(self):
-        ccc = arcpy.Parameter(
-            displayName = "CCC Layer",
-            name = "ccc",
-            datatype = "GPFeatureLayer",
-            parameterType = "Required",
-            direction = "Input")
-
-        parcels = arcpy.Parameter(
-            displayName = "Parcel Layer",
-            name = "parcels",
-            datatype = "GPFeatureLayer",
-            parameterType = "Required",
-            direction = "Input")
-
-        output_parcels = arcpy.Parameter(
-            displayName = "Output Layer",
-            name = "output_parcels",
-            datatype = "GPFeatureLayer",
-            parameterType = "Required",
-            direction = "Output")
-
-        params = [ccc,parcels,output_parcels]
-        return params
-
-    def isLicensed(self):
-        return True
-
-    def updateParameters(self, params):
-        return
-
-    def updateMessages(self, params):
-        return
-
-    def execute(self, params, messages):
-
-        ccc = params[0].valueAsText
-        parcels = params[1].valueAsText
-        output_parcels = params[2].valueAsText
-
 ######################################################################################################################################################
 #SET PATHS BELOW
 ######################################################################################################################################################
