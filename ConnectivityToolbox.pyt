@@ -182,7 +182,7 @@ class ParcelPopulator(object):
 
         #find min and max priority scores for normalization equation
         with arcpy.da.SearchCursor(parcels_final,"CCC_priority_score") as cursor:
-         value_list = sorted({row[0] for row in cursor})
+            value_list = sorted({row[0] for row in cursor})
         max_value = max(value_list)
         min_value = min(value_list)
 
