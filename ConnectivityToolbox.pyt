@@ -75,6 +75,7 @@ class ParcelPopulator(object):
         output_parcels = params[2].valueAsText
 
         #copy parcel layer to final feature class where calculations will be made
+        arcpy.AddMessage("Copying parcel layer...")
         parcels_final = arcpy.FeatureClassToFeatureClass_conversion(parcels,os.path.dirname(output_parcels),os.path.basename(output_parcels))
 
         #add acre field and calculate acres of parcel to be used later in proportion calculation
@@ -85,6 +86,7 @@ class ParcelPopulator(object):
                 row[0] = area
                 cursor.updateRow(row)
 
+        arcpy.AddMessage("Intersecting cores/connectors with parcels...")
         #intersect cores and connectors layer with parcels layer
         intersect = arcpy.Intersect_analysis([ccc,parcels_final],os.path.join("in_memory","intersect"))
 
@@ -96,9 +98,11 @@ class ParcelPopulator(object):
                 row[0] = area
                 cursor.updateRow(row)
 
+        arcpy.AddMessage("Running statistics on intersect...")
         #calculate sum of acres and max of 6 other values
         statistics = arcpy.Statistics_analysis(intersect,os.path.join("in_memory","statistics"),[["acres_ccc","SUM"],["Connectivity_Value","MAX"],["NHA_Mean","MAX"],["GeoPhys_Mean","MAX"],["LCM_Mean","MAX"],["RegFlow_Mean","MAX"],["Resilience_Mean","MAX"]],"FID_"+os.path.basename(output_parcels))
 
+        arcpy.AddMessage("Joining statistics field to parcel layer...")
         #join statistics fields to parcel layer
         oid_fieldname = arcpy.Describe(parcels_final).OIDFieldName
         arcpy.JoinField_management(parcels_final,oid_fieldname,intersect,"FID_"+os.path.basename(output_parcels),"Region")
@@ -138,12 +142,14 @@ class ParcelPopulator(object):
         for n,t,a,l in zip(f_name,f_type,f_alias,f_length):
             arcpy.AddField_management(parcels_final,n,t,"","",l,a)
 
+        arcpy.AddMessage("Calculating proportion of parcel area covered by CCC...")
         #calculate proportion of parcel area covered by CCC and update field
         with arcpy.da.UpdateCursor(parcels_final,["SUM_acres_ccc","acres_parcel","CCC_pct"]) as cursor:
             for row in cursor:
                 row[2] = round(row[0]/row[1],3)
                 cursor.updateRow(row)
 
+        arcpy.AddMessage("Calculating area score...")
         #calculate CCC area score and update field
         with arcpy.da.UpdateCursor(parcels_final,["SUM_acres_ccc","CCC_area_score"]) as cursor:
             for row in cursor:
@@ -174,6 +180,7 @@ class ParcelPopulator(object):
                 row[1] = score
                 cursor.updateRow(row)
 
+        arcpy.AddMessage("Calculating priority score...")
         #calculate CCC Priority Score by multiplying CCC Area Score, CCC Percent, and Max Connectivity Value
         with arcpy.da.UpdateCursor(parcels_final,["CCC_priority_score","CCC_area_score","CCC_pct","MAX_Connectivity_Value"]) as cursor:
             for row in cursor:
@@ -186,12 +193,14 @@ class ParcelPopulator(object):
         max_value = max(value_list)
         min_value = min(value_list)
 
+        arcpy.AddMessage("Calculating normalized priority score")
         #calculate normalized priority score
         with arcpy.da.UpdateCursor(parcels_final,["priority_score_norm","CCC_priority_score"]) as cursor:
             for row in cursor:
                 row[0] = round((row[1]-min_value)/(max_value-min_value),3)
                 cursor.updateRow(row)
 
+        arcpy.AddMessage("Calculating priority category...")
         #calculate priority category for parcels
         with arcpy.da.UpdateCursor(parcels_final,["conn_priority","priority_score_norm"]) as cursor:
             for row in cursor:
@@ -218,6 +227,7 @@ class ParcelPopulator(object):
             regions = sorted({row[0] for row in cursor})
 
         for region in regions:
+            arcpy.AddMessage("Calculating normalized regional score for "+str(region)+" region...")
             with arcpy.da.SearchCursor(parcels_final,"CCC_priority_score","Region = '{0}'".format(region)) as cursor:
                 value_list = sorted({row[0] for row in cursor})
 
@@ -236,6 +246,7 @@ class ParcelPopulator(object):
                         cursor.updateRow(row)
 
         #calculate priority category for parcels
+        arcpy.AddMessage("Calculating priority category for regional priority scores...")
         with arcpy.da.UpdateCursor(parcels_final,["reg_conn_priority","reg_priority_score_norm"]) as cursor:
             for row in cursor:
                 if row[1] == 0:
@@ -257,4 +268,4 @@ class ParcelPopulator(object):
                     pass
 
         Time = "The script took {} minutes to run.".format(str((time.time()-start_time)/60))
-        print(Time)
+        arcpy.AddMessage(Time)
