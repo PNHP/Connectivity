@@ -100,16 +100,16 @@ class ParcelPopulator(object):
 
         arcpy.AddMessage("Running statistics on intersect...")
         #calculate sum of acres and max of 6 other values
-        statistics = arcpy.Statistics_analysis(intersect,os.path.join("in_memory","statistics"),[["acres_ccc","SUM"],["Connectivity_Value","MAX"],["NHA_Mean","MAX"],["GeoPhys_Mean","MAX"],["LCM_Mean","MAX"],["RegFlow_Mean","MAX"],["Resilience_Mean","MAX"]],"FID_"+os.path.basename(output_parcels))
+        statistics = arcpy.Statistics_analysis(intersect,os.path.join("in_memory","statistics"),[["acres_ccc","SUM"],["Connectivity_Value","MAX"],["NHA_Mean_Norm","MAX"],["GeoPhys_Mean_Norm","MAX"],["LCM_Mean_Norm","MAX"],["RegFlow_Mean_Norm","MAX"],["Resilience_Mean_Norm","MAX"]],"FID_"+os.path.basename(output_parcels))
 
         arcpy.AddMessage("Joining statistics field to parcel layer...")
         #join statistics fields to parcel layer
         oid_fieldname = arcpy.Describe(parcels_final).OIDFieldName
         arcpy.JoinField_management(parcels_final,oid_fieldname,intersect,"FID_"+os.path.basename(output_parcels),"Region")
-        arcpy.JoinField_management(parcels_final,oid_fieldname,statistics,"FID_"+os.path.basename(output_parcels),["SUM_acres_ccc","MAX_Connectivity_Value","MAX_NHA_Mean","MAX_GeoPhys_Mean","MAX_LCM_Mean","MAX_RegFlow_Mean","MAX_Resilience_Mean"])
+        arcpy.JoinField_management(parcels_final,oid_fieldname,statistics,"FID_"+os.path.basename(output_parcels),["SUM_acres_ccc","MAX_Connectivity_Value","MAX_NHA_Mean_Norm","MAX_GeoPhys_Mean_Norm","MAX_LCM_Mean_Norm","MAX_RegFlow_Mean_Norm","MAX_Resilience_Mean_Norm"])
 
         #fill Null values with 0 to prevent issues in calculations later
-        with arcpy.da.UpdateCursor(parcels_final,["SUM_acres_ccc","MAX_Connectivity_Value","MAX_NHA_Mean","MAX_GeoPhys_Mean","MAX_LCM_Mean","MAX_RegFlow_Mean","MAX_Resilience_Mean"]) as cursor:
+        with arcpy.da.UpdateCursor(parcels_final,["SUM_acres_ccc","MAX_Connectivity_Value","MAX_NHA_Mean_Norm","MAX_GeoPhys_Mean_Norm","MAX_LCM_Mean_Norm","MAX_RegFlow_Mean_Norm","MAX_Resilience_Mean_Norm"]) as cursor:
             for row in cursor:
                 if row[0] is None:
                     row[0] = 0
